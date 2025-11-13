@@ -1,6 +1,6 @@
 @PluginSubGroup(
     title = "Dagster plugin",
-    description = "This Plugin would bridge Kestra and Dagster by allowing flows to programmatically start Dagster runs, poll their statuses, and retrieve results.",
+    description = "This Plugin would bridge Kestra and Dagster by allowing flows to programmatically start Dagster runs, poll their statuses.",
     categories = PluginSubGroup.PluginCategory.TOOL
 )
 package io.kestra.plugin.dagster;

@@ -69,7 +69,6 @@ testlogger {
 }
 
 dependencies {
-
     // Platform
     testAnnotationProcessor enforcedPlatform("io.kestra:platform:$kestraVersion")
     testImplementation enforcedPlatform("io.kestra:platform:$kestraVersion")
