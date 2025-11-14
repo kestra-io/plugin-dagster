@@ -216,7 +216,7 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
             .status(runOrError.getStatus())
             .startTime(convertTimestamp(runOrError.getStartTime()))
             .endTime(convertTimestamp(runOrError.getEndTime()))
-            .build();
+                .build();
     }
 
     private LaunchRunResponse launchRun(RunContext runContext, String baseUrl,
