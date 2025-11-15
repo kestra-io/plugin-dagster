@@ -11,7 +11,9 @@ MAX_ATTEMPTS=60
 ATTEMPT=0
 
 while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-    if curl -sf http://localhost:3000/graphql > /dev/null 2>&1; then
+    if curl -sf -X POST http://localhost:3000/graphql \
+        -H "Content-Type: application/json" \
+        -d '{"query": "{ __typename }"}' > /dev/null 2>&1; then
         echo "Dagster webserver is ready!"
         exit 0
     fi
