@@ -20,6 +20,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import org.slf4j.Logger;
 
 import java.net.URI;
 import java.time.Duration;
@@ -158,12 +159,14 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
 
     @Override
     public Output run(RunContext runContext) throws Exception {
+        Logger logger=runContext.logger();
+
         String rBaseUrl = runContext.render(this.baseUrl).as(String.class).orElseThrow();
         String rLocation = runContext.render(this.location).as(String.class).orElseThrow();
         String rRepository = runContext.render(this.repository).as(String.class).orElseThrow();
         String rJobName = runContext.render(this.jobName).as(String.class).orElseThrow();
 
-        runContext.logger().info("Triggering Dagster job '{}' in repository '{}/{}'",
+        logger.info("Triggering Dagster job '{}' in repository '{}/{}'",
             rJobName, rLocation, rRepository);
 
         LaunchRunResponse launchResponse = launchRun(runContext, rBaseUrl, rLocation,
@@ -172,7 +175,7 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
         String runId = launchResponse.getData().getLaunchPipelineExecution().getRun().getRunId();
         String status = launchResponse.getData().getLaunchPipelineExecution().getRun().getStatus();
 
-        runContext.logger().info("Dagster run launched with ID: {}, initial status: {}", runId, status);
+        logger.info("Dagster run launched with ID: {}, initial status: {}", runId, status);
 
         Output.OutputBuilder outputBuilder = Output.builder()
             .runId(runId)
@@ -184,14 +187,14 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
             return outputBuilder.build();
         }
 
-        runContext.logger().info("Waiting for Dagster run {} to complete", runId);
+        logger.info("Waiting for Dagster run {} to complete", runId);
 
         RunStatusResponse finalStatus = Await.until(
             throwSupplier(() -> {
                 RunStatusResponse statusResponse = getRunStatus(runContext, rBaseUrl, runId);
                 String currentStatus = statusResponse.getData().getRunOrError().getStatus();
 
-                runContext.logger().debug("Current status for run {}: {}", runId, currentStatus);
+                logger.debug("Current status for run {}: {}", runId, currentStatus);
 
                 // Terminal states
                 if ("SUCCESS".equalsIgnoreCase(currentStatus) ||
