@@ -1,0 +1,105 @@
+services:
+  # PostgreSQL database for Dagster metadata
+  dagster_postgres:
+    image: postgres:14
+    container_name: dagster_postgres
+    environment:
+      POSTGRES_USER: dagster_user
+      POSTGRES_PASSWORD: dagster_password
+      POSTGRES_DB: dagster_db
+    networks:
+      - dagster_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dagster_user -d dagster_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Dagster user code server
+  dagster_user_code:
+    build:
+      context: ./docker/dagster
+      dockerfile: Dockerfile
+    container_name: dagster_user_code
+    image: ghcr.io/kestra-io/plugin-dagster/dagster:latest
+    restart: always
+    environment:
+      DAGSTER_POSTGRES_USER: dagster_user
+      DAGSTER_POSTGRES_PASSWORD: dagster_password
+      DAGSTER_POSTGRES_DB: dagster_db
+      DAGSTER_CURRENT_IMAGE: ghcr.io/kestra-io/plugin-dagster/dagster:latest
+    volumes:
+      - ./docker/dagster/jobs:/opt/dagster/app
+    networks:
+      - dagster_network
+    depends_on:
+      dagster_postgres:
+        condition: service_healthy
+    command:
+      - dagster
+      - code-server
+      - start
+      - -h
+      - "0.0.0.0"
+      - -p
+      - "4000"
+      - -f
+      - /opt/dagster/app/test_jobs.py
+    healthcheck:
+      test: ["CMD", "dagster", "api", "grpc-health-check", "-p", "4000"]
+      interval: 3s
+      timeout: 1s
+      retries: 20
+      start_period: 3s
+
+  # Dagster webserver
+  dagster_webserver:
+    image: ghcr.io/kestra-io/plugin-dagster/dagster:latest
+    container_name: dagster_webserver
+    restart: always
+    environment:
+      DAGSTER_POSTGRES_USER: dagster_user
+      DAGSTER_POSTGRES_PASSWORD: dagster_password
+      DAGSTER_POSTGRES_DB: dagster_db
+    ports:
+      - "3000:3000"
+    networks:
+      - dagster_network
+    depends_on:
+      dagster_postgres:
+        condition: service_healthy
+      dagster_user_code:
+        condition: service_healthy
+    command:
+      - dagster-webserver
+      - -h
+      - "0.0.0.0"
+      - -p
+      - "3000"
+      - -w
+      - workspace.yaml
+
+  # Dagster daemon
+  dagster_daemon:
+    image: ghcr.io/kestra-io/plugin-dagster/dagster:latest
+    container_name: dagster_daemon
+    restart: on-failure
+    environment:
+      DAGSTER_POSTGRES_USER: dagster_user
+      DAGSTER_POSTGRES_PASSWORD: dagster_password
+      DAGSTER_POSTGRES_DB: dagster_db
+    networks:
+      - dagster_network
+    depends_on:
+      dagster_postgres:
+        condition: service_healthy
+      dagster_user_code:
+        condition: service_started
+    command:
+      - dagster-daemon
+      - run
+
+networks:
+  dagster_network:
+    driver: bridge
+    name: dagster_network
