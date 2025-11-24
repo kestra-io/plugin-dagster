@@ -28,6 +28,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static io.kestra.core.utils.Rethrow.throwSupplier;
@@ -71,6 +72,9 @@ import static io.kestra.core.utils.Rethrow.throwSupplier;
                         flow: "{{ flow.id }}"
                         task: "{{ task.id }}"
                         execution: "{{ execution.id }}"
+                    options:
+                      headers:
+                        Authorization: "Bearer {{ secret('DAGSTER_TOKEN') }}"
                 """
         ),
         @Example(
@@ -159,7 +163,7 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
 
     @Override
     public Output run(RunContext runContext) throws Exception {
-        Logger logger=runContext.logger();
+        Logger logger = runContext.logger();
 
         String rBaseUrl = runContext.render(this.baseUrl).as(String.class).orElseThrow();
         String rLocation = runContext.render(this.location).as(String.class).orElseThrow();
@@ -196,10 +200,8 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
 
                 logger.debug("Current status for run {}: {}", runId, currentStatus);
 
-                // Terminal states
-                if ("SUCCESS".equalsIgnoreCase(currentStatus) ||
-                    "FAILURE".equalsIgnoreCase(currentStatus) ||
-                    "CANCELED".equalsIgnoreCase(currentStatus)) {
+                var terminalStates = List.of("SUCCESS", "FAILURE", "CANCELED");
+                if (terminalStates.contains(currentStatus)) {
                     return statusResponse;
                 }
 
@@ -219,7 +221,7 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
             .status(runOrError.getStatus())
             .startTime(convertTimestamp(runOrError.getStartTime()))
             .endTime(convertTimestamp(runOrError.getEndTime()))
-                .build();
+            .build();
     }
 
     private LaunchRunResponse launchRun(RunContext runContext, String baseUrl,
@@ -227,12 +229,11 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
                                         String jobName) throws Exception {
 
         Map<String, Object> runConfigData = new HashMap<>();
-        Map<String,Object> renderedBody = runContext.render(this.body).asMap(String.class, Object.class);
-        if (renderedBody.containsKey("runConfig")) {
-            runConfigData = (Map<String, Object>) runContext.render(Property.ofValue(renderedBody.get("runConfig")))
+        Map<String, Object> rBody = runContext.render(this.body).asMap(String.class, Object.class);
+        if (rBody.containsKey("runConfig")) {
+            runConfigData = (Map<String, Object>) runContext.render(Property.ofValue(rBody.get("runConfig")))
                 .asMap(String.class, Object.class);
         }
-
 
         String mutation = buildLaunchMutation();
         Map<String, Object> variables = Map.of(
@@ -251,10 +252,9 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
                 .addHeader("Content-Type", "application/json")
                 .body(HttpRequest.StringRequestBody.builder().content(requestBody).build());
 
-
-            var renderedOptions = runContext.render(this.options).asMap(String.class, Object.class);
-            if (renderedOptions.containsKey("headers") && renderedOptions.get("headers") instanceof Map) {
-                Map<String, Object> headersMap = (Map<String, Object>) renderedOptions.get("headers");
+            var rOptions = runContext.render(this.options).asMap(String.class, Object.class);
+            if (rOptions.containsKey("headers") && rOptions.get("headers") instanceof Map) {
+                Map<String, Object> headersMap = (Map<String, Object>) rOptions.get("headers");
                 headersMap.forEach((key, value) -> requestBuilder.addHeader(key, String.valueOf(value)));
             }
 
@@ -292,13 +292,11 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
                 .addHeader("Content-Type", "application/json")
                 .body(HttpRequest.StringRequestBody.builder().content(requestBody).build());
 
-
-            Map<String, Object> renderedOptions = runContext.render(this.options).asMap(String.class, Object.class);
-            if (renderedOptions.containsKey("headers") && renderedOptions.get("headers") instanceof Map) {
-                Map<String, Object> headersMap = (Map<String, Object>) renderedOptions.get("headers");
+            Map<String, Object> rOptions = runContext.render(this.options).asMap(String.class, Object.class);
+            if (rOptions.containsKey("headers") && rOptions.get("headers") instanceof Map) {
+                Map<String, Object> headersMap = (Map<String, Object>) rOptions.get("headers");
                 headersMap.forEach((key, value) -> requestBuilder.addHeader(key, String.valueOf(value)));
             }
-
 
             HttpRequest request = requestBuilder.build();
 
@@ -320,33 +318,33 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
 
     private String buildLaunchMutation() {
         return """
-            mutation LaunchRun($repositoryLocationName: String!, $repositoryName: String!,\s
-                              $pipelineName: String!, $runConfigData: RunConfigData!) {
-              launchPipelineExecution(
-                executionParams: {
-                  selector: {
-                    repositoryLocationName: $repositoryLocationName,
-                    repositoryName: $repositoryName,
-                    pipelineName: $pipelineName
-                  },
-                  mode: "default",
-                  runConfigData: $runConfigData
-                }
-              ) {
-                __typename
-                ... on LaunchRunSuccess {
-                  run {
-                    runId
-                    status
-                  }
-                }
-                ... on PythonError {
-                  message
-                  stack
-                }
-              }
-            }
-           \s""";
+             mutation LaunchRun($repositoryLocationName: String!, $repositoryName: String!,\s
+                               $pipelineName: String!, $runConfigData: RunConfigData!) {
+               launchPipelineExecution(
+                 executionParams: {
+                   selector: {
+                     repositoryLocationName: $repositoryLocationName,
+                     repositoryName: $repositoryName,
+                     pipelineName: $pipelineName
+                   },
+                   mode: "default",
+                   runConfigData: $runConfigData
+                 }
+               ) {
+                 __typename
+                 ... on LaunchRunSuccess {
+                   run {
+                     runId
+                     status
+                   }
+                 }
+                 ... on PythonError {
+                   message
+                   stack
+                 }
+               }
+             }
+            \s""";
     }
 
     private String buildStatusQuery() {
@@ -370,7 +368,7 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
     }
 
     private String buildGraphQLRequest(String query, Map<String, Object> variables)
-            throws JsonProcessingException {
+        throws JsonProcessingException {
         Map<String, Object> request = Map.of(
             "query", query,
             "variables", variables
@@ -383,7 +381,7 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
             return null;
         }
         return LocalDateTime.ofInstant(
-            Instant.ofEpochMilli((long)(timestamp * 1000)),
+            Instant.ofEpochMilli((long) (timestamp * 1000)),
             ZoneId.systemDefault()
         );
     }
