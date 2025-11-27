@@ -1,0 +1,8 @@
+group: io.kestra.plugin.dagster
+name: "dagster"
+title: "Dagster"
+description: "This Plugin would bridge Kestra and Dagster by allowing flows to programmatically start Dagster runs, poll their statuses."
+body: ""
+videos: []
+createdBy: "Kestra Core Team"
+managedBy: "Kestra Core Team"
