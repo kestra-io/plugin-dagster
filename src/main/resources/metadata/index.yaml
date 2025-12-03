@@ -1,8 +1,8 @@
 group: io.kestra.plugin.dagster
 name: "dagster"
 title: "Dagster"
-description: "This Plugin would bridge Kestra and Dagster by allowing flows to programmatically start Dagster runs, poll their statuses."
-body: ""
+description: "Tasks that trigger Dagster jobs via the GraphQL API and optionally wait for results so Kestra flows can orchestrate runs."
+body: "Launch Dagster jobs from Kestra while passing run configuration and tags. Requires baseUrl, location, repository, and jobName; provide headers for authentication and tune wait, maxDuration, and pollFrequency when monitoring until completion."
 videos: []
 createdBy: "Kestra Core Team"
 managedBy: "Kestra Core Team"
