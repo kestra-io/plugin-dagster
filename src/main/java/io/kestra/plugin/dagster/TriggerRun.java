@@ -39,8 +39,8 @@ import static io.kestra.core.utils.Rethrow.throwSupplier;
 @Getter
 @NoArgsConstructor
 @Schema(
-    title = "Trigger a Dagster job run and optionally wait for completion.",
-    description = "Launch a Dagster job execution via GraphQL API, poll for status updates, and retrieve the final state."
+    title = "Trigger a Dagster job via GraphQL",
+    description = "Starts a Dagster job with LaunchPipelineExecution, optionally waits for a terminal status, then returns run metadata. Waiting is disabled by default; when enabled the task polls every pollFrequency (default 5s) until maxDuration (default 30m)."
 )
 @Plugin(
     examples = {
@@ -104,62 +104,62 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
     private static final ObjectMapper objectMapper = JacksonMapper.ofJson();
 
     @Schema(
-        title = "The GraphQL API endpoint URL for your Dagster deployment",
-        description = "For Dagster Cloud, this is typically https://dagster.cloud/<org>/<deployment>/graphql"
-    )
-    @NotNull
-    private Property<String> baseUrl;
+    title = "Dagster GraphQL endpoint URL",
+    description = "Dagster Cloud usually exposes https://dagster.cloud/<org>/<deployment>/graphql"
+)
+@NotNull
+private Property<String> baseUrl;
 
-    @Schema(
-        title = "The repository location name"
-    )
-    @NotNull
-    private Property<String> location;
+@Schema(
+    title = "Repository location name"
+)
+@NotNull
+private Property<String> location;
 
-    @Schema(
-        title = "The repository name"
-    )
-    @NotNull
-    private Property<String> repository;
+@Schema(
+    title = "Repository name"
+)
+@NotNull
+private Property<String> repository;
 
-    @Schema(
-        title = "The job/pipeline name to trigger"
-    )
-    @NotNull
-    private Property<String> jobName;
+@Schema(
+    title = "Job or pipeline name to trigger"
+)
+@NotNull
+private Property<String> jobName;
 
-    @Schema(
-        title = "Whether to wait for the job run to complete",
-        description = "Default value is false"
-    )
-    @Builder.Default
-    private Property<Boolean> wait = Property.ofValue(Boolean.FALSE);
+@Schema(
+    title = "Wait for the job to complete",
+    description = "Defaults to false; when true the task polls until the run reaches a terminal status"
+)
+@Builder.Default
+private Property<Boolean> wait = Property.ofValue(Boolean.FALSE);
 
-    @Schema(
-        title = "The maximum total wait duration",
-        description = "Maximum time to wait for the job to complete when wait is true"
-    )
-    @Builder.Default
-    Property<Duration> maxDuration = Property.ofValue(Duration.ofMinutes(30));
+@Schema(
+    title = "Maximum total wait duration",
+    description = "Default 30m; only used when wait is true"
+)
+@Builder.Default
+Property<Duration> maxDuration = Property.ofValue(Duration.ofMinutes(30));
 
-    @Schema(
-        title = "Specify how often the task should poll for the job run status",
-        description = "Frequency of status checks when wait is true"
-    )
-    @Builder.Default
-    Property<Duration> pollFrequency = Property.ofValue(Duration.ofSeconds(5));
+@Schema(
+    title = "Polling frequency for run status",
+    description = "Default 5s; only used when wait is true"
+)
+@Builder.Default
+Property<Duration> pollFrequency = Property.ofValue(Duration.ofSeconds(5));
 
-    @Schema(
-        title = "Request body containing runConfig and tags",
-        description = "Body of the GraphQL request including run configuration and tags"
-    )
-    private Property<Map<String, Object>> body;
+@Schema(
+    title = "GraphQL body with runConfig and tags",
+    description = "Optional runConfig and tags to pass to Dagster; values are rendered before sending"
+)
+private Property<Map<String, Object>> body;
 
-    @Schema(
-        title = "HTTP request options including custom headers",
-        description = "Configuration for HTTP client, can include headers like Authorization"
-    )
-    private Property<Map<String, Object>> options;
+@Schema(
+    title = "HTTP request options",
+    description = "Optional HTTP settings such as headers (e.g., Authorization)"
+)
+private Property<Map<String, Object>> options;
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -390,28 +390,28 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
     @Builder
     public static class Output implements io.kestra.core.models.tasks.Output {
         @Schema(
-            title = "The Dagster run ID"
+            title = "Dagster run ID"
         )
         private String runId;
 
         @Schema(
-            title = "The current status of the run",
+            title = "Current run status",
             description = "Possible values: QUEUED, STARTING, STARTED, SUCCESS, FAILURE, CANCELED"
         )
         private String status;
 
         @Schema(
-            title = "The name of the job that was triggered"
+            title = "Name of the job that was triggered"
         )
         private String jobName;
 
         @Schema(
-            title = "The start time of the run"
+            title = "Start time of the run"
         )
         private LocalDateTime startTime;
 
         @Schema(
-            title = "The end time of the run"
+            title = "End time of the run"
         )
         private LocalDateTime endTime;
     }
