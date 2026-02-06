@@ -105,7 +105,7 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
 
     @Schema(
     title = "Dagster GraphQL endpoint URL",
-    description = "Dagster Cloud usually exposes https://dagster.cloud/<org>/<deployment>/graphql"
+    description = "Dagster Cloud usually exposes `https://dagster.cloud/<org>/<deployment>/graphql`"
 )
 @NotNull
 private Property<String> baseUrl;
