@@ -18,3 +18,5 @@ src/test/resources/application-test.yml
 *.pyc
 __pycache__/
 .pytest_cache/
+.factorypath
+bin/
