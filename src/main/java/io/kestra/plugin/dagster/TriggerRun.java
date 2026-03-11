@@ -1,9 +1,21 @@
 package io.kestra.plugin.dagster;
 
+import java.net.URI;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.slf4j.Logger;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import io.kestra.core.exceptions.IllegalVariableEvaluationException;
 import io.kestra.core.http.HttpRequest;
 import io.kestra.core.http.HttpResponse;
@@ -16,20 +28,11 @@ import io.kestra.core.models.tasks.Task;
 import io.kestra.core.runners.RunContext;
 import io.kestra.core.serializers.JacksonMapper;
 import io.kestra.core.utils.Await;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
-import org.slf4j.Logger;
-
-import java.net.URI;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 import static io.kestra.core.utils.Rethrow.throwSupplier;
 
@@ -104,62 +107,62 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
     private static final ObjectMapper objectMapper = JacksonMapper.ofJson();
 
     @Schema(
-    title = "Dagster GraphQL endpoint URL",
-    description = "Dagster Cloud usually exposes `https://dagster.cloud/<org>/<deployment>/graphql`"
-)
-@NotNull
-private Property<String> baseUrl;
+        title = "Dagster GraphQL endpoint URL",
+        description = "Dagster Cloud usually exposes `https://dagster.cloud/<org>/<deployment>/graphql`"
+    )
+    @NotNull
+    private Property<String> baseUrl;
 
-@Schema(
-    title = "Repository location name"
-)
-@NotNull
-private Property<String> location;
+    @Schema(
+        title = "Repository location name"
+    )
+    @NotNull
+    private Property<String> location;
 
-@Schema(
-    title = "Repository name"
-)
-@NotNull
-private Property<String> repository;
+    @Schema(
+        title = "Repository name"
+    )
+    @NotNull
+    private Property<String> repository;
 
-@Schema(
-    title = "Job or pipeline name to trigger"
-)
-@NotNull
-private Property<String> jobName;
+    @Schema(
+        title = "Job or pipeline name to trigger"
+    )
+    @NotNull
+    private Property<String> jobName;
 
-@Schema(
-    title = "Wait for the job to complete",
-    description = "Defaults to false; when true the task polls until the run reaches a terminal status"
-)
-@Builder.Default
-private Property<Boolean> wait = Property.ofValue(Boolean.FALSE);
+    @Schema(
+        title = "Wait for the job to complete",
+        description = "Defaults to false; when true the task polls until the run reaches a terminal status"
+    )
+    @Builder.Default
+    private Property<Boolean> wait = Property.ofValue(Boolean.FALSE);
 
-@Schema(
-    title = "Maximum total wait duration",
-    description = "Default 30m; only used when wait is true"
-)
-@Builder.Default
-Property<Duration> maxDuration = Property.ofValue(Duration.ofMinutes(30));
+    @Schema(
+        title = "Maximum total wait duration",
+        description = "Default 30m; only used when wait is true"
+    )
+    @Builder.Default
+    Property<Duration> maxDuration = Property.ofValue(Duration.ofMinutes(30));
 
-@Schema(
-    title = "Polling frequency for run status",
-    description = "Default 5s; only used when wait is true"
-)
-@Builder.Default
-Property<Duration> pollFrequency = Property.ofValue(Duration.ofSeconds(5));
+    @Schema(
+        title = "Polling frequency for run status",
+        description = "Default 5s; only used when wait is true"
+    )
+    @Builder.Default
+    Property<Duration> pollFrequency = Property.ofValue(Duration.ofSeconds(5));
 
-@Schema(
-    title = "GraphQL body with runConfig and tags",
-    description = "Optional runConfig and tags to pass to Dagster; values are rendered before sending"
-)
-private Property<Map<String, Object>> body;
+    @Schema(
+        title = "GraphQL body with runConfig and tags",
+        description = "Optional runConfig and tags to pass to Dagster; values are rendered before sending"
+    )
+    private Property<Map<String, Object>> body;
 
-@Schema(
-    title = "HTTP request options",
-    description = "Optional HTTP settings such as headers (e.g., Authorization)"
-)
-private Property<Map<String, Object>> options;
+    @Schema(
+        title = "HTTP request options",
+        description = "Optional HTTP settings such as headers (e.g., Authorization)"
+    )
+    private Property<Map<String, Object>> options;
 
     @Override
     public Output run(RunContext runContext) throws Exception {
@@ -170,11 +173,15 @@ private Property<Map<String, Object>> options;
         String rRepository = runContext.render(this.repository).as(String.class).orElseThrow();
         String rJobName = runContext.render(this.jobName).as(String.class).orElseThrow();
 
-        logger.info("Triggering Dagster job '{}' in repository '{}/{}'",
-            rJobName, rLocation, rRepository);
+        logger.info(
+            "Triggering Dagster job '{}' in repository '{}/{}'",
+            rJobName, rLocation, rRepository
+        );
 
-        LaunchRunResponse launchResponse = launchRun(runContext, rBaseUrl, rLocation,
-            rRepository, rJobName);
+        LaunchRunResponse launchResponse = launchRun(
+            runContext, rBaseUrl, rLocation,
+            rRepository, rJobName
+        );
 
         String runId = launchResponse.getData().getLaunchPipelineExecution().getRun().getRunId();
         String status = launchResponse.getData().getLaunchPipelineExecution().getRun().getStatus();
@@ -194,7 +201,8 @@ private Property<Map<String, Object>> options;
         logger.info("Waiting for Dagster run {} to complete", runId);
 
         RunStatusResponse finalStatus = Await.until(
-            throwSupplier(() -> {
+            throwSupplier(() ->
+            {
                 RunStatusResponse statusResponse = getRunStatus(runContext, rBaseUrl, runId);
                 String currentStatus = statusResponse.getData().getRunOrError().getStatus();
 
@@ -225,8 +233,8 @@ private Property<Map<String, Object>> options;
     }
 
     private LaunchRunResponse launchRun(RunContext runContext, String baseUrl,
-                                        String location, String repository,
-                                        String jobName) throws Exception {
+        String location, String repository,
+        String jobName) throws Exception {
 
         Map<String, Object> runConfigData = new HashMap<>();
         Map<String, Object> rBody = runContext.render(this.body).asMap(String.class, Object.class);
@@ -269,8 +277,10 @@ private Property<Map<String, Object>> options;
             LaunchRunResponse launchResponse = response.getBody();
 
             if (launchResponse.getData().getLaunchPipelineExecution().getTypename().equals("PythonError")) {
-                throw new IllegalStateException("Python error in Dagster: " +
-                    launchResponse.getData().getLaunchPipelineExecution().getMessage());
+                throw new IllegalStateException(
+                    "Python error in Dagster: " +
+                        launchResponse.getData().getLaunchPipelineExecution().getMessage()
+                );
             }
 
             return launchResponse;
@@ -278,7 +288,7 @@ private Property<Map<String, Object>> options;
     }
 
     private RunStatusResponse getRunStatus(RunContext runContext, String baseUrl,
-                                           String runId) throws Exception {
+        String runId) throws Exception {
 
         String query = buildStatusQuery();
         Map<String, Object> variables = Map.of("runId", runId);
