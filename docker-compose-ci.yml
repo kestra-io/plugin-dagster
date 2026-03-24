@@ -94,7 +94,7 @@ services:
       dagster_postgres:
         condition: service_healthy
       dagster_user_code:
-        condition: service_started
+        condition: service_healthy
     command:
       - dagster-daemon
       - run

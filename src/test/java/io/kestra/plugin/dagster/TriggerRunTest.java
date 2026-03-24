@@ -50,8 +50,8 @@ class TriggerRunTest {
             .repository(Property.ofValue("__repository__"))
             .jobName(Property.ofValue("test_job_wait"))
             .wait(Property.ofValue(true))
-            .pollFrequency(Property.ofValue(Duration.ofSeconds(1)))
-            .maxDuration(Property.ofValue(Duration.ofSeconds(30)))
+            .pollFrequency(Property.ofValue(Duration.ofSeconds(2)))
+            .maxDuration(Property.ofValue(Duration.ofSeconds(60)))
             .build();
 
         TriggerRun.Output output = task.run(runContext);
