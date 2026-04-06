@@ -35,6 +35,7 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import static io.kestra.core.utils.Rethrow.throwSupplier;
+import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -111,24 +112,28 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
         description = "Dagster Cloud usually exposes `https://dagster.cloud/<org>/<deployment>/graphql`"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> baseUrl;
 
     @Schema(
         title = "Repository location name"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> location;
 
     @Schema(
         title = "Repository name"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> repository;
 
     @Schema(
         title = "Job or pipeline name to trigger"
     )
     @NotNull
+    @PluginProperty(group = "main")
     private Property<String> jobName;
 
     @Schema(
@@ -136,6 +141,7 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
         description = "Defaults to false; when true the task polls until the run reaches a terminal status"
     )
     @Builder.Default
+    @PluginProperty(group = "execution")
     private Property<Boolean> wait = Property.ofValue(Boolean.FALSE);
 
     @Schema(
@@ -156,12 +162,14 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
         title = "GraphQL body with runConfig and tags",
         description = "Optional runConfig and tags to pass to Dagster; values are rendered before sending"
     )
+    @PluginProperty(group = "main")
     private Property<Map<String, Object>> body;
 
     @Schema(
         title = "HTTP request options",
         description = "Optional HTTP settings such as headers (e.g., Authorization)"
     )
+    @PluginProperty(group = "advanced")
     private Property<Map<String, Object>> options;
 
     @Override
@@ -477,6 +485,7 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
 
         private String runId;
         private String status;
+        @PluginProperty(group = "main")
         private String jobName;
         private Double startTime;
         private Double endTime;
