@@ -35,42 +35,18 @@
 </p>
 <p align="center" style="color:grey;"><i>Get started with Kestra in 3 minutes.</i></p>
 
-
 # Dagster Plugin for Kestra
 
-> This repository provides the official **Kestra plugin for Dagster**.
+## Why
 
-It allows Kestra flows to trigger and interact with **Dagster jobs** via the Dagster GraphQL API — for example, by launching runs, waiting for completion, and retrieving job results.
+- What user problem does this solve? Teams need to trigger Dagster jobs from orchestrated workflows instead of relying on manual console work, ad hoc scripts, or disconnected schedulers.
+- Why would a team adopt this plugin in a workflow? It keeps Dagster steps in the same Kestra flow as upstream preparation, approvals, retries, notifications, and downstream systems.
+- What operational/business outcome does it enable? It reduces manual handoffs and fragmented tooling while improving reliability, traceability, and delivery speed for processes that depend on Dagster.
 
-This plugin is based on the standard Kestra plugin template, ensuring full compatibility with Kestra’s plugin development model, unit tests, and CI/CD workflows.
+## What
 
-![Kestra orchestrator](https://kestra.io/video.gif)
-
-## Running the project in local
-### Prerequisites
-- Java 21
-- Docker
-
-### Running tests
-```
-./gradlew check --parallel
-```
-
-### Development
-
-`VSCode`:
-
-Follow the README.md within the `.devcontainer` folder for a quick and easy way to get up and running with developing plugins if you are using VSCode.
-
-`Other IDEs`:
-
-```
-./gradlew shadowJar && docker build -t kestra-custom . && docker run --rm -p 8080:8080 kestra-custom server local
-```
-> [!NOTE]
-> You need to relaunch this whole command everytime you make a change to your plugin
-
-go to http://localhost:8080, your plugin will be available to use
+- Provides plugin components under `io.kestra.plugin.dagster`.
+- Includes classes such as `TriggerRun`.
 
 ## Documentation
 * Full documentation can be found under: [kestra.io/docs](https://kestra.io/docs)
