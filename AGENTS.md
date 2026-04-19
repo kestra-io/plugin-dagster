@@ -7,8 +7,9 @@
 
 ## Why
 
-- This plugin integrates Kestra with Dagster.
-- It provides tasks that trigger Dagster jobs via the GraphQL API and optionally wait for results so Kestra flows can orchestrate runs.
+- What user problem does this solve? Teams need to trigger Dagster jobs from orchestrated workflows instead of relying on manual console work, ad hoc scripts, or disconnected schedulers.
+- Why would a team adopt this plugin in a workflow? It keeps Dagster steps in the same Kestra flow as upstream preparation, approvals, retries, notifications, and downstream systems.
+- What operational/business outcome does it enable? It reduces manual handoffs and fragmented tooling while improving reliability, traceability, and delivery speed for processes that depend on Dagster.
 
 ## How
 
