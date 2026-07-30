@@ -1,6 +1,6 @@
 @PluginSubGroup(
-    title = "Dagster plugin",
-    description = "This Plugin would bridge Kestra and Dagster by allowing flows to programmatically start Dagster runs, poll their statuses.",
+    title = "Dagster",
+    description = "This sub-group of plugins contains tasks for triggering Dagster jobs via the GraphQL API and polling their run status.",
     categories = {
         PluginSubGroup.PluginCategory.DATA
     }
