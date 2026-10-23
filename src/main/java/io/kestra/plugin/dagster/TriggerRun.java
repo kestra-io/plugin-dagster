@@ -5,6 +5,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,7 @@ import io.kestra.core.http.HttpResponse;
 import io.kestra.core.http.client.HttpClient;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.Task;
@@ -35,7 +37,6 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import static io.kestra.core.utils.Rethrow.throwSupplier;
-import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -251,13 +252,14 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
                 .asMap(String.class, Object.class);
         }
 
+        var tags = executionTags(runContext, rBody);
         String mutation = buildLaunchMutation();
-        Map<String, Object> variables = Map.of(
-            "repositoryLocationName", location,
-            "repositoryName", repository,
-            "pipelineName", jobName,
-            "runConfigData", runConfigData
-        );
+        Map<String, Object> variables = new HashMap<>();
+        variables.put("repositoryLocationName", location);
+        variables.put("repositoryName", repository);
+        variables.put("pipelineName", jobName);
+        variables.put("runConfigData", runConfigData);
+        variables.put("executionMetadata", tags.isEmpty() ? null : Map.of("tags", tags));
 
         String requestBody = buildGraphQLRequest(mutation, variables);
 
@@ -293,6 +295,28 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
 
             return launchResponse;
         }
+    }
+
+    private List<Map<String, String>> executionTags(RunContext runContext, Map<String, Object> rBody) throws IllegalVariableEvaluationException {
+        if (rBody.get("tags") == null) {
+            return List.of();
+        }
+
+        Map<String, Object> renderedTags = (Map<String, Object>) runContext.render(Property.ofValue(rBody.get("tags")))
+            .asMap(String.class, Object.class);
+        var tags = new ArrayList<Map<String, String>>();
+        for (var entry : renderedTags.entrySet()) {
+            if (entry.getValue() == null) {
+                continue;
+            }
+            tags.add(
+                Map.of(
+                    "key", entry.getKey(),
+                    "value", String.valueOf(entry.getValue())
+                )
+            );
+        }
+        return tags;
     }
 
     private RunStatusResponse getRunStatus(RunContext runContext, String baseUrl,
@@ -336,8 +360,9 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
 
     private String buildLaunchMutation() {
         return """
-             mutation LaunchRun($repositoryLocationName: String!, $repositoryName: String!,\s
-                               $pipelineName: String!, $runConfigData: RunConfigData!) {
+             mutation LaunchRun($repositoryLocationName: String!, $repositoryName: String!,
+                               $pipelineName: String!, $runConfigData: RunConfigData!,
+                               $executionMetadata: ExecutionMetadata) {
                launchPipelineExecution(
                  executionParams: {
                    selector: {
@@ -346,7 +371,8 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
                      pipelineName: $pipelineName
                    },
                    mode: "default",
-                   runConfigData: $runConfigData
+                   runConfigData: $runConfigData,
+                   executionMetadata: $executionMetadata
                  }
                ) {
                  __typename
