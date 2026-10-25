@@ -22,6 +22,7 @@ import io.kestra.core.http.HttpResponse;
 import io.kestra.core.http.client.HttpClient;
 import io.kestra.core.models.annotations.Example;
 import io.kestra.core.models.annotations.Plugin;
+import io.kestra.core.models.annotations.PluginProperty;
 import io.kestra.core.models.property.Property;
 import io.kestra.core.models.tasks.RunnableTask;
 import io.kestra.core.models.tasks.Task;
@@ -35,7 +36,6 @@ import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 import static io.kestra.core.utils.Rethrow.throwSupplier;
-import io.kestra.core.models.annotations.PluginProperty;
 
 @SuperBuilder
 @ToString
@@ -160,7 +160,7 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
 
     @Schema(
         title = "GraphQL body with runConfig and tags",
-        description = "Optional runConfig and tags to pass to Dagster; values are rendered before sending"
+        description = "Optional `runConfig` and `tags` to pass to Dagster, rendered before sending. `tags` become Dagster run tags, with values sent as strings."
     )
     @PluginProperty(group = "main")
     private Property<Map<String, Object>> body;
@@ -256,7 +256,8 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
             "repositoryLocationName", location,
             "repositoryName", repository,
             "pipelineName", jobName,
-            "runConfigData", runConfigData
+            "runConfigData", runConfigData,
+            "executionMetadata", Map.of("tags", executionTags(rBody))
         );
 
         String requestBody = buildGraphQLRequest(mutation, variables);
@@ -293,6 +294,20 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
 
             return launchResponse;
         }
+    }
+
+    private static List<Map<String, String>> executionTags(Map<String, Object> rBody) {
+        var rTags = rBody.get("tags");
+        if (rTags == null) {
+            return List.of();
+        }
+        if (!(rTags instanceof Map<?, ?> rTagMap)) {
+            throw new IllegalArgumentException("`body.tags` must be a map of tag names to values, got %s".formatted(rTags.getClass().getSimpleName()));
+        }
+        return rTagMap.entrySet().stream()
+            .filter(e -> e.getValue() != null)
+            .map(e -> Map.of("key", String.valueOf(e.getKey()), "value", String.valueOf(e.getValue())))
+            .toList();
     }
 
     private RunStatusResponse getRunStatus(RunContext runContext, String baseUrl,
@@ -336,8 +351,9 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
 
     private String buildLaunchMutation() {
         return """
-             mutation LaunchRun($repositoryLocationName: String!, $repositoryName: String!,\s
-                               $pipelineName: String!, $runConfigData: RunConfigData!) {
+             mutation LaunchRun($repositoryLocationName: String!, $repositoryName: String!,
+                               $pipelineName: String!, $runConfigData: RunConfigData!,
+                               $executionMetadata: ExecutionMetadata) {
                launchPipelineExecution(
                  executionParams: {
                    selector: {
@@ -346,7 +362,8 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
                      pipelineName: $pipelineName
                    },
                    mode: "default",
-                   runConfigData: $runConfigData
+                   runConfigData: $runConfigData,
+                   executionMetadata: $executionMetadata
                  }
                ) {
                  __typename
