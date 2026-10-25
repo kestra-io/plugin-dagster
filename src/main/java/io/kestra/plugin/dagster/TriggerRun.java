@@ -5,7 +5,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -161,7 +160,7 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
 
     @Schema(
         title = "GraphQL body with runConfig and tags",
-        description = "Optional runConfig and tags to pass to Dagster; values are rendered before sending"
+        description = "Optional `runConfig` and `tags` to pass to Dagster, rendered before sending. `tags` become Dagster run tags, with values sent as strings."
     )
     @PluginProperty(group = "main")
     private Property<Map<String, Object>> body;
@@ -252,14 +251,14 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
                 .asMap(String.class, Object.class);
         }
 
-        var tags = executionTags(runContext, rBody);
         String mutation = buildLaunchMutation();
-        Map<String, Object> variables = new HashMap<>();
-        variables.put("repositoryLocationName", location);
-        variables.put("repositoryName", repository);
-        variables.put("pipelineName", jobName);
-        variables.put("runConfigData", runConfigData);
-        variables.put("executionMetadata", tags.isEmpty() ? null : Map.of("tags", tags));
+        Map<String, Object> variables = Map.of(
+            "repositoryLocationName", location,
+            "repositoryName", repository,
+            "pipelineName", jobName,
+            "runConfigData", runConfigData,
+            "executionMetadata", Map.of("tags", executionTags(rBody))
+        );
 
         String requestBody = buildGraphQLRequest(mutation, variables);
 
@@ -297,26 +296,18 @@ public class TriggerRun extends Task implements RunnableTask<TriggerRun.Output> 
         }
     }
 
-    private List<Map<String, String>> executionTags(RunContext runContext, Map<String, Object> rBody) throws IllegalVariableEvaluationException {
-        if (rBody.get("tags") == null) {
+    private static List<Map<String, String>> executionTags(Map<String, Object> rBody) {
+        var rTags = rBody.get("tags");
+        if (rTags == null) {
             return List.of();
         }
-
-        Map<String, Object> renderedTags = (Map<String, Object>) runContext.render(Property.ofValue(rBody.get("tags")))
-            .asMap(String.class, Object.class);
-        var tags = new ArrayList<Map<String, String>>();
-        for (var entry : renderedTags.entrySet()) {
-            if (entry.getValue() == null) {
-                continue;
-            }
-            tags.add(
-                Map.of(
-                    "key", entry.getKey(),
-                    "value", String.valueOf(entry.getValue())
-                )
-            );
+        if (!(rTags instanceof Map<?, ?> rTagMap)) {
+            throw new IllegalArgumentException("`body.tags` must be a map of tag names to values, got %s".formatted(rTags.getClass().getSimpleName()));
         }
-        return tags;
+        return rTagMap.entrySet().stream()
+            .filter(e -> e.getValue() != null)
+            .map(e -> Map.of("key", String.valueOf(e.getKey()), "value", String.valueOf(e.getValue())))
+            .toList();
     }
 
     private RunStatusResponse getRunStatus(RunContext runContext, String baseUrl,
